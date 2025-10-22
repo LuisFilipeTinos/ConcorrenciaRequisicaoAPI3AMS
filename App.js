@@ -1,12 +1,12 @@
 import { StatusBar } from 'expo-status-bar';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   StyleSheet, Text, View, Image, TouchableOpacity,
-  Linking, ScrollView, TextInput
+  Linking, ScrollView, TextInput, ActivityIndicator
 } from 'react-native';
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
 
-//Funções para exibição de assíncronismo:
+//Função para consumir a API a partir de um endpoint especificado:
 function getPokemon(idNome) {
   return fetch(`https://pokeapi.co/api/v2/pokemon/${idNome}/`)
     .then((data) => {
@@ -18,6 +18,7 @@ function getPokemon(idNome) {
     });
 }
 
+//Funções para exibição de assíncronismo:
 // async function buscaPokeConsole(idNome) {
 //   console.log('Busca iniciada!');
 //   const poke = await getPokemon(idNome);
@@ -29,6 +30,8 @@ function getPokemon(idNome) {
 
 
 export default function App() {
+
+  //Uso do hook useState para a inicialização de constantes de estado:
   const [pokemonName, setPokemonName] = useState('');
   const [pokemonHeight, setPokemonHeight] = useState('');
   const [pokemonImage, setPokemonImage] = useState('');
@@ -37,9 +40,13 @@ export default function App() {
   const [searchText, setSearchText] = useState('');
   const [isShiny, setIsShiny] = useState(false);
   const [pokemonAbilities, setPokemonAbilities] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
 
+  //Função assíncrona de busca a partir de ID (chama a função que busca na API e seta as informações de acordo com os estados especificados):
   async function buscarPokemon(id) {
+    setIsLoading(true); 
     const pokemon = await getPokemon(id);
+    setIsLoading(false); 
     if (!pokemon) {
       setPokemonName('Não encontrado');
       setPokemonHeight('-');
@@ -57,6 +64,7 @@ export default function App() {
     setPokemonWeight(pokemon.weight);
     setPokemonId(pokemon.id);
 
+    //Operador condicional ternário para verificação (é shiny ou não? - se sim, define o sprite shiny para exibição)
     const image = isShiny
       ? pokemon.sprites.front_shiny
       : pokemon.sprites.front_default;
@@ -65,16 +73,18 @@ export default function App() {
     setPokemonAbilities(pokemon.abilities);
   };
 
+  //Função para redirecionar o usuário até o site específico
   function pressionarBtnHomePokemon() {
     Linking.openURL('https://www.pokemon.com/us');
   };
 
+  //Coloca a inicial do nome do pokemon como maiúscula (vem minúscula da API)
   function inicialMaiuscula(text) {
     if (!text) return '';
     return text.charAt(0).toUpperCase() + text.slice(1);
   }
 
-  // Atualiza imagem quando muda entre normal e shiny
+  // Atualiza imagem quando muda entre normal e shiny - executa a cada alteração do estado isShiny
   useEffect(() => {
     if (pokemonName) {
       buscarPokemon(pokemonName);
@@ -104,7 +114,7 @@ export default function App() {
             <Text style={styles.searchButtonText}>Buscar</Text>
           </TouchableOpacity>
 
-          {/* Toggle shiny */}
+          {/* Shiny - não-shiny */}
           <View style={styles.radioContainer}>
             <TouchableOpacity onPress={() => setIsShiny(false)} style={styles.radioBtn}>
               <View style={[styles.radioCircle, !isShiny && styles.radioSelected]} />
@@ -116,30 +126,39 @@ export default function App() {
             </TouchableOpacity>
           </View>
 
-          {pokemonImage ? (
-            <Image
-              source={{ uri: pokemonImage }}
-              style={styles.pokemonImage}
-              resizeMode="contain"
-            />
+          {isLoading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#000" />
+              <Text style={styles.loadingText}>Carregando Pokémon...</Text>
+            </View>
           ) : (
-            <Text style={{ marginTop: 20 }}>Imagem não disponível</Text>
-          )}
+            <>
+              {pokemonImage ? (
+                <Image
+                  source={{ uri: pokemonImage }}
+                  style={styles.pokemonImage}
+                  resizeMode="contain"
+                />
+              ) : (
+                <Text style={{ marginTop: 20 }}>Imagem não disponível</Text>
+              )}
 
-          <Text style={styles.infoText}>Nome: {inicialMaiuscula(pokemonName)}</Text>
-          <Text style={styles.infoText}>#ID: {pokemonId}</Text>
-          <Text style={styles.infoText}>Altura: {pokemonHeight}</Text>
-          <Text style={styles.infoText}>Peso: {pokemonWeight}</Text>
-          <Text style={styles.infoText}>Habilidades:</Text>
-            {pokemonAbilities.length > 0 ? (
-              pokemonAbilities.map((item, index) => (
-                <Text key={index}>
-                  {'\u2022'} {inicialMaiuscula(item.ability.name)} {item.is_hidden ? '(Oculta)' : ''}
-                </Text>
-              ))
-            ) : (
-              <Text>Nenhuma habilidade encontrada.</Text>
-            )}
+              <Text style={styles.infoText}>Nome: {inicialMaiuscula(pokemonName)}</Text>
+              <Text style={styles.infoText}>#ID: {pokemonId}</Text>
+              <Text style={styles.infoText}>Altura: {pokemonHeight}</Text>
+              <Text style={styles.infoText}>Peso: {pokemonWeight}</Text>
+              <Text style={styles.infoText}>Habilidades:</Text>
+              {pokemonAbilities.length > 0 ? (
+                pokemonAbilities.map((item, index) => (
+                  <Text key={index}>
+                    {'\u2022'} {inicialMaiuscula(item.ability.name)} {item.is_hidden ? '(Oculta)' : ''}
+                  </Text>
+                ))
+              ) : (
+                <Text>Nenhuma habilidade encontrada.</Text>
+              )}
+            </>
+          )}
         </ScrollView>
       </SafeAreaView>
     </SafeAreaProvider>
@@ -227,4 +246,11 @@ const styles = StyleSheet.create({
     fontSize: 18,
     marginBottom: 10,
   },
+  loadingContainer: {
+    marginTop: 40, 
+    alignItems: 'center'
+  },
+  loadingText: {
+    marginTop: 10
+  }
 });
